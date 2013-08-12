@@ -657,8 +657,8 @@ void RegenNavmeshOnthefly(TMesh * ground,TMesh * water)
 #ifndef DISABLE_PROCESS_ATTACH
 unsigned int GetClientCameraPtr(unsigned int pid)
 {
-    unsigned int dword_B7436C = ReadFromProcess<unsigned int>(pid,0xB7436C);
-    unsigned int camera_pointer = ReadFromProcess<unsigned int>(pid,dword_B7436C+0x7E20);
+    unsigned int dword_B7436C = ReadFromProcess<unsigned int>(pid,0x400000+0xAD7A10);
+    unsigned int camera_pointer = ReadFromProcess<unsigned int>(pid,dword_B7436C+0x80D0);
     return camera_pointer;
 
 
@@ -670,12 +670,12 @@ void UpdateClientStatus()
   #ifndef DISABLE_PROCESS_ATTACH
 
     pid = -1;
-    unsigned int STATIC_PLAYER   = 0xCD87A8;
-    const unsigned int PlayerBaseOffset1 = 0x34;
+    unsigned int STATIC_PLAYER   = 0x400000+0xA70C50;
+    const unsigned int PlayerBaseOffset1 = 0x38;
     const unsigned int  PlayerBaseOffset2 = 0x24;
-    const unsigned int    XOffset = 0x798;                // PlayerX
-    const unsigned int    YOffset = 0x79c;                // PlayerY
-    const unsigned int    ZOffset = 0x7a0;                // PlayerZ
+    const unsigned int    XOffset = 0x790;                // PlayerX
+    const unsigned int    YOffset = 0x794;                // PlayerY
+    const unsigned int    ZOffset = 0x798;                // PlayerZ
 #ifndef __WIN32__
     pid_t* pidlist = find_pid_by_name("Wow.exe");
     if ( pidlist )
@@ -701,8 +701,14 @@ void UpdateClientStatus()
 
 	
 #endif
-
-    char * playername = V_ReadProvessMemory(pid,0xC79D18,30);
+  /* int version = ReadFromProcess<int>(pid,0x400000+0x99B1CF);
+    if ( version != 15595 )
+    {
+	printf("Client version mismatch\n");
+	pid = -2;
+	return;
+    }*/
+    char * playername = V_ReadProvessMemory(pid,0x400000+0x9BE820,30);
 
     if (!playername)
         playername_s = "@Errore@";
@@ -713,7 +719,7 @@ void UpdateClientStatus()
         free(playername);
     }
     unsigned long playerbase = ReadFromProcess<unsigned int>(pid,ReadFromProcess<unsigned int>(pid,ReadFromProcess<unsigned int>(pid,STATIC_PLAYER)+PlayerBaseOffset1)+PlayerBaseOffset2);
-
+    
     client_x = ReadFromProcess<float>(pid,playerbase+XOffset);
     client_y = ReadFromProcess<float>(pid,playerbase+YOffset);
     client_z = ReadFromProcess<float>(pid,playerbase+ZOffset);
@@ -721,7 +727,7 @@ void UpdateClientStatus()
     client_cam_x = ReadFromProcess<float>(pid,camera+0x8);
     client_cam_y = ReadFromProcess<float>(pid,camera+0xC);
     client_cam_z = ReadFromProcess<float>(pid,camera+0x10);
-    client_map_id = ReadFromProcess<unsigned int>(pid,0xAB63BC);
+    client_map_id = ReadFromProcess<unsigned int>(pid,0x400000+0x00897628);
 	//char * dataraw = V_ReadProvessMemory(pid,0xA6CF1D-4,1024*10);
 	/*FILE * f = fopen("memdump.bin","wb");
 	fwrite(dataraw,1024*10,1,f);

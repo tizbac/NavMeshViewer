@@ -14,7 +14,7 @@ using namespace MaNGOS;
 // see following files:
 // contrib/extractor/system.cpp
 // src/game/GridMap.cpp
-char const* MAP_VERSION_MAGIC = "v1.2";
+char const* MAP_VERSION_MAGIC = "v1.3";
 namespace MMAP
 {
 TileBuilder::TileBuilder(bool hiRes) :
@@ -126,15 +126,21 @@ bool TileBuilder::loadMap(uint32 mapID, uint32 tileX, uint32 tileY, MeshData &me
     if(!mapFile)
         return true;
     FILE* holeFile = fopen(holeFileName,"rb");
+    GridMapFileHeader fheader;
+    fread(&fheader, sizeof(GridMapFileHeader), 1, mapFile);
     if (holeFile)
     {
         fread(holes,sizeof(uint16)*16*16,1,holeFile);
         fclose(holeFile);
     }
     else
+    {
+        fseek(mapFile,fheader.holesOffset,SEEK_SET);
         memset(holes, 0, sizeof(uint16)*16*16);
-    GridMapFileHeader fheader;
-    fread(&fheader, sizeof(GridMapFileHeader), 1, mapFile);
+	fread(holes,fheader.holesSize,1,mapFile);
+	
+    }
+    
 
     if(fheader.versionMagic != *((uint32 const*)(MAP_VERSION_MAGIC)))
     {
