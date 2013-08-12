@@ -665,6 +665,17 @@ unsigned int GetClientCameraPtr(unsigned int pid)
 }
 #endif
 float client_cam_x,client_cam_y,client_cam_z;
+class WowObject {
+public:
+  float x;
+  float y;
+  float z;
+  std::string name;
+  int type;
+  
+};
+std::vector<WowObject> objects;
+const char * types[32] = { "Object", "Item", "Container" , "Unit", "Player", "GameObject" , "DynamicObject" , "Corpse" , "AiGroup", "AreaTrigger" };
 void UpdateClientStatus()
 {
   #ifndef DISABLE_PROCESS_ATTACH
@@ -734,6 +745,53 @@ void UpdateClientStatus()
 	fclose(f);
 	free(dataraw);*/
 //clientstatus << " X: " << x << " Y: " << y << " Z: " << z;
+    objects.clear();
+    //1 : get reference to the manager
+    unsigned int current_manager = ReadFromProcess<unsigned int>(pid,ReadFromProcess<unsigned int>(pid,0x400000+0x9BE7E0)+0x463C);
+    
+    if ( current_manager && current_manager != 0xFFFFFFFF )
+    {
+      //2 : get the reference to the first objects
+      unsigned int cur_obj = ReadFromProcess<unsigned int>(pid,current_manager+0xC0);
+      //3 : iterate the linked list
+      while ( cur_obj && cur_obj % 2 == 0 )
+      {
+	int type = ReadFromProcess<int>(pid,cur_obj+0x14);
+	//printf("Obj %p type %d\n",cur_obj,type);
+	WowObject o;
+	std::stringstream ss;
+	ss << "<";
+	if ( type <= 9 )
+	  ss << types[type];
+	else 
+	  ss << "Error";
+	ss << ">";
+	ss << " GUID: ";
+	
+	unsigned int storage = ReadFromProcess<unsigned int>(pid,cur_obj+0xc);
+	
+	unsigned long long int guid = ReadFromProcess<unsigned long long int>(pid,storage+0x0 /*GUID*/);
+	ss << guid;
+	
+	o.name = ss.str();
+	o.x = ReadFromProcess<float>(pid,cur_obj+0x790);
+	o.y = ReadFromProcess<float>(pid,cur_obj+0x794);
+	o.z = ReadFromProcess<float>(pid,cur_obj+0x798);
+	o.type = type;
+	objects.push_back(o);
+	cur_obj = ReadFromProcess<unsigned int>(pid,cur_obj+0x3C);
+      }
+      
+    }else{
+      printf("Error obtaining reference to object manager\n");
+    }
+    
+    
+    
+    
+    
+    
+    
 #endif
 
 
@@ -1167,6 +1225,40 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
         polyDetail->UploadData();
 }
 
+
+void drawObject(float x, float y , float z , const char * caption , float r,float g,float b,GLdouble * model_view, GLdouble *projection,GLint * viewport,FTGLTextureFont* font)
+{
+  matset s;
+  s.setambient(0.0,0.0,0.0,1.0);
+  glColor4f(r,g,b,1.0);
+    glEnable(GL_LIGHTING);
+
+  renderSphere(y,z,x,1.5,8);
+  GLdouble win[3];
+
+  gluProject(y,z,x,model_view,projection,viewport,&win[0],&win[1],&win[2]);
+  
+  glPushMatrix();
+  
+  glLoadIdentity();
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(0.0, Main->width, 0.0, Main->height, -100000.0, 1.0); 
+  
+  glDisable(GL_DEPTH_TEST);
+  glColor4f(1,1,1,1);
+  glDisable(GL_LIGHTING);
+  glMatrixMode(GL_MODELVIEW);
+  
+  font->Render(caption,-1,FTPoint(win[0],win[1],-90000));
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glMatrixMode(GL_MODELVIEW);
+  glEnable(GL_DEPTH_TEST);
+  
+}
 int main(int argc,char** argv)
 {
     /*ilInit();
@@ -1185,7 +1277,7 @@ int main(int argc,char** argv)
 
 
     Main = new engine();
-    Main->Init3d(800,600);
+    Main->Init3d(1024,768);
     if ( not (GL_EXT_geometry_shader4))
     {
         printf("Supporto agli shader geometrici mancante\n");
@@ -1550,13 +1642,20 @@ int main(int argc,char** argv)
         // navmeshdepth->BindFBO();
         // Main->clearscreen(0.5,0.5,0.5,1.0);
         //
-        if (!isnan(client_x) && !isnan(client_y) && !isnan(client_z) && pid != -1)
-        {
-            glColor3f(1.0,0.0,0.0);
-            renderSphere( client_y, client_z, client_x, 1.5, 8 );
-        }
         
+        GLdouble model_view[16];
+	glGetDoublev(GL_MODELVIEW_MATRIX, model_view);
+
+	GLdouble projection[16];
+	glGetDoublev(GL_PROJECTION_MATRIX, projection);
+
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	
         
+       
+	  
+	 
         
         
         
@@ -1785,7 +1884,18 @@ int main(int argc,char** argv)
             }
             ry += Main->mouserelx/4.0;
         }
-
+	 if (!isnan(client_x) && !isnan(client_y) && !isnan(client_z) && pid != -1)
+        {
+	    drawObject(client_x,client_y,client_z,"<Self>",1.0,0,0,model_view,projection,viewport,&font);
+        }
+        
+        for ( int i = 0; i < objects.size(); i++ )
+	{
+	  if ( objects[i].x != client_x && objects[i].y != client_y && objects[i].z != client_z )
+	  {
+	    drawObject(objects[i].x,objects[i].y,objects[i].z,objects[i].name.c_str(),1.0,0,0,model_view,projection,viewport,&font);
+	  }
+	}
         glLoadIdentity();
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
