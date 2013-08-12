@@ -672,9 +672,10 @@ public:
   float z;
   std::string name;
   int type;
-  
+  unsigned long long int guid;
 };
 std::vector<WowObject> objects;
+unsigned long long int mouseoverguid = 0;
 const char * types[32] = { "Object", "Item", "Container" , "Unit", "Player", "GameObject" , "DynamicObject" , "Corpse" , "AiGroup", "AreaTrigger" };
 void UpdateClientStatus()
 {
@@ -739,6 +740,9 @@ void UpdateClientStatus()
     client_cam_y = ReadFromProcess<float>(pid,camera+0xC);
     client_cam_z = ReadFromProcess<float>(pid,camera+0x10);
     client_map_id = ReadFromProcess<unsigned int>(pid,0x400000+0x00897628);
+    uint64_t mguid = ReadFromProcess<long long unsigned int >(pid,0x400000+ 0xAD7438);
+    if ( mguid )
+      mouseoverguid = mguid;//In this way the user can keep the object selected by hitting esc key on wow 
 	//char * dataraw = V_ReadProvessMemory(pid,0xA6CF1D-4,1024*10);
 	/*FILE * f = fopen("memdump.bin","wb");
 	fwrite(dataraw,1024*10,1,f);
@@ -774,10 +778,18 @@ void UpdateClientStatus()
 	ss << guid;
 	
 	o.name = ss.str();
-	o.x = ReadFromProcess<float>(pid,cur_obj+0x790);
-	o.y = ReadFromProcess<float>(pid,cur_obj+0x794);
-	o.z = ReadFromProcess<float>(pid,cur_obj+0x798);
+	if ( type != 5 )
+	{
+	  o.x = ReadFromProcess<float>(pid,cur_obj+0x790);
+	  o.y = ReadFromProcess<float>(pid,cur_obj+0x794);
+	  o.z = ReadFromProcess<float>(pid,cur_obj+0x798);
+	}else{
+	  o.x = ReadFromProcess<float>(pid,cur_obj+0x110);
+	  o.y = ReadFromProcess<float>(pid,cur_obj+0x114);
+	  o.z = ReadFromProcess<float>(pid,cur_obj+0x118);
+	}
 	o.type = type;
+	o.guid = guid;
 	objects.push_back(o);
 	cur_obj = ReadFromProcess<unsigned int>(pid,cur_obj+0x3C);
       }
@@ -1011,7 +1023,7 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
 {
 	if (!font)
 	  font = new FTTextureFont("Vera.ttf");
-	font->FaceSize(12);
+	font->FaceSize(16);
 	printf("Loading tile [%u,%u]\n",gx,gy);
     VMAP::VMapManager2 * vmapmanager = new VMAP::VMapManager2();
     MMAP::TileBuilder * tb = new MMAP::TileBuilder(true);
@@ -1224,39 +1236,63 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
         
         polyDetail->UploadData();
 }
-
-
-void drawObject(float x, float y , float z , const char * caption , float r,float g,float b,GLdouble * model_view, GLdouble *projection,GLint * viewport,FTGLTextureFont* font)
+void renderOutline(FTGLTextureFont* font, float x , float y , std::string s)
 {
+  glColor4f(0,0,0,1.0);
+  font->Render(s.c_str(),-1,FTPoint(x-1,y+1,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x-1,y,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x-1,y-1,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x,y+1,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x,y-1,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x+1,y+1,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x+1,y,-90000));
+  font->Render(s.c_str(),-1,FTPoint(x+1,y-1,-90000));
+  glColor4f(1,1,1,1);
+  font->Render(s.c_str(),-1,FTPoint(x,y,-90000));
+}
+
+void drawObject(float x, float y , float z , WowObject o , float r,float g,float b,GLdouble * model_view, GLdouble *projection,GLint * viewport,FTGLTextureFont* font,bool mouseover)
+{
+  
   matset s;
   s.setambient(0.0,0.0,0.0,1.0);
   glColor4f(r,g,b,1.0);
     glEnable(GL_LIGHTING);
 
-  renderSphere(y,z,x,1.5,8);
-  GLdouble win[3];
+  renderSphere(y,z,x,mouseover ? 4.0 : 1.5,8);
 
-  gluProject(y,z,x,model_view,projection,viewport,&win[0],&win[1],&win[2]);
-  
-  glPushMatrix();
-  
-  glLoadIdentity();
-  glMatrixMode(GL_PROJECTION);
-  glPushMatrix();
-  glLoadIdentity();
-  glOrtho(0.0, Main->width, 0.0, Main->height, -100000.0, 1.0); 
-  
-  glDisable(GL_DEPTH_TEST);
-  glColor4f(1,1,1,1);
-  glDisable(GL_LIGHTING);
-  glMatrixMode(GL_MODELVIEW);
-  
-  font->Render(caption,-1,FTPoint(win[0],win[1],-90000));
-  glPopMatrix();
-  glMatrixMode(GL_PROJECTION);
-  glPopMatrix();
-  glMatrixMode(GL_MODELVIEW);
-  glEnable(GL_DEPTH_TEST);
+  if ( mouseover )
+  {
+    GLdouble win[3];
+
+    gluProject(y,z,x,model_view,projection,viewport,&win[0],&win[1],&win[2]);
+    
+    glPushMatrix();
+    
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, Main->width, 0.0, Main->height, -100000.0, 1.0); 
+    
+    glDisable(GL_DEPTH_TEST);
+    
+    glDisable(GL_LIGHTING);
+    glMatrixMode(GL_MODELVIEW);
+    
+    renderOutline(font,win[0],win[1],o.name);
+    std::stringstream ss;
+    ss << "Guid Low: " << (o.guid & 0xFFFFFFFFLL);
+    renderOutline(font,win[0],win[1]-20,ss.str());
+    ss.str("");
+    ss << "Guid High: " << ((o.guid >> 32LL) & 0xFFFFFFFFLL);
+    renderOutline(font,win[0],win[1]-40,ss.str());
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glEnable(GL_DEPTH_TEST);
+  }
   
 }
 int main(int argc,char** argv)
@@ -1286,9 +1322,11 @@ int main(int argc,char** argv)
     }
 
   FTGLTextureFont font("Vera.ttf");
-    font.FaceSize(12);
+    font.FaceSize(16);
 	FTGLTextureFont font2("Vera.ttf");
     font2.FaceSize(60);
+    FTGLTextureFont font3("Vera.ttf");
+    font3.FaceSize(18);
     char txt[1024];
     bool quit = false;
     float rx=0.0,ry=0.0;
@@ -1884,16 +1922,24 @@ int main(int argc,char** argv)
             }
             ry += Main->mouserelx/4.0;
         }
-	 if (!isnan(client_x) && !isnan(client_y) && !isnan(client_z) && pid != -1)
+	/* if (!isnan(client_x) && !isnan(client_y) && !isnan(client_z) && pid != -1)
         {
-	    drawObject(client_x,client_y,client_z,"<Self>",1.0,0,0,model_view,projection,viewport,&font);
-        }
+	    drawObject(client_x,client_y,client_z,"<Self>",1.0,0,0,model_view,projection,viewport,&font,false);
+        }*/
         
         for ( int i = 0; i < objects.size(); i++ )
 	{
-	  if ( objects[i].x != client_x && objects[i].y != client_y && objects[i].z != client_z )
+	  if ( /*objects[i].x != client_x && objects[i].y != client_y && objects[i].z != client_z &&*/
+	    sqrt((objects[i].x-client_x)*(objects[i].x-client_x)+
+	    (objects[i].y-client_y)*(objects[i].y-client_y)+
+	    (objects[i].z-client_z)*(objects[i].z-client_z)) < 60.0 
+	  )
 	  {
-	    drawObject(objects[i].x,objects[i].y,objects[i].z,objects[i].name.c_str(),1.0,0,0,model_view,projection,viewport,&font);
+	    if ( objects[i].type != 5 )
+	      drawObject(objects[i].x,objects[i].y,objects[i].z,objects[i],0.0,0,1.0,model_view,projection,viewport,&font,mouseoverguid == objects[i].guid);
+	    else
+	      drawObject(objects[i].x,objects[i].y,objects[i].z,objects[i],1.0,1.0,0.0,model_view,projection,viewport,&font,mouseoverguid == objects[i].guid);
+	    
 	  }
 	}
         glLoadIdentity();
