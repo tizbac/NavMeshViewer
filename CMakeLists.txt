@@ -11,7 +11,8 @@ link_directories( . )
 #find_package(Boost 1.45.0 COMPONENTS thread REQUIRED)
 find_package(ZLIB REQUIRED )
 find_package(Freetype REQUIRED )
-include_directories ( ${ZLIB_INCLUDE_DIRS}  ${FREETYPE_INCLUDE_DIRS} . ./Models ./Maps ./vmap/Management ./Dynamic ./Dynamic/LinkedReference ./vmap /usr/include/SDL ./Base ./Base/ftgl ../../../src/framework ./irrlicht ../../../src/shared/vmap ./Debug . ./Detour ./Recast ../../../dep/include/g3dlite ./DebugUtils ../../../src/shared/)
+FIND_PACKAGE( Boost 1.40 COMPONENTS thread REQUIRED )
+include_directories ( ${ZLIB_INCLUDE_DIRS}  ${FREETYPE_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} . ./Models ./Maps ./vmap/Management ./Dynamic ./Dynamic/LinkedReference ./vmap /usr/include/SDL ./Base ./Base/ftgl ../../../src/framework ./irrlicht ../../../src/shared/vmap ./Debug . ./Detour ./Recast ../../../dep/include/g3dlite ./DebugUtils ../../../src/shared/)
 
 SET(commonsources ChunkyTriMesh.cpp  TileBuilder.cpp
 DebugAlloc.cpp     MeshLoaderObj.cpp  VMapExtensions.cpp 
@@ -239,6 +240,6 @@ if ( MINGW )
  
 
 else ( MINGW )
-target_link_libraries ( viewer  GLEW GL GLU  SDL  detour recast ftglS                                                                                                                                                                                                                    
+target_link_libraries ( viewer  GLEW GL GLU  SDL  detour recast  ftglS                                                                                                                                                                                                                     
  ${CMAKE_THREAD_LIBS_INIT} gl3dengine ${Boost_LIBRARIES} ${ZLIB_LIBRARIES} ${FREETYPE_LIBRARIES})
 endif (MINGW )
