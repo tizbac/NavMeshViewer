@@ -948,7 +948,7 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
 	if (!font)
 	  font = new FTTextureFont("Vera.ttf");
 	font->FaceSize(12);
-	printf("Loading tile [%u,%u]\n",gx,gy);
+	printf("Loading tilea [%u,%u]\n",gx,gy);
     VMAP::VMapManager2 * vmapmanager = new VMAP::VMapManager2();
     MMAP::TileBuilder * tb = new MMAP::TileBuilder(true);
     G3D::Array<float> modelVerts;
@@ -965,10 +965,10 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
     
     InstanceTreeMap instanceTrees;
     ((VMAP::VMapManager2*)vmapmanager)->getInstanceMapTree(instanceTrees);
-    if ( instanceTrees.find(mapid) == instanceTrees.end() )
-        return 0;
+    if ( instanceTrees.find(mapid) != instanceTrees.end() )
+    {
     instanceTrees[mapid]->getModelInstances(models, count);
-    
+    printf("L1\n");
     for (int i = 0; i < count; ++i)
     {
         ModelInstance instance = models[i];
@@ -1032,6 +1032,8 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
             vmap_meshes.push_back(gm);
         }
     }
+    }
+    printf("L2\n");
     int vertCount = modelVerts.size()/3;
 	if ( firstload )
 	{
@@ -1077,6 +1079,7 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
     MeshData meshData;
 	//LOADINGMSG("Caricamento terreno...")
 	renderprogressbar(200,200,50,200,0.65);
+    
     tb->loadMap(mapid, gy, gx, meshData);
     liqmesh->indexes.clear();
     liqmesh->verts.clear();
@@ -1114,6 +1117,7 @@ int LoadTile(TMesh * landmesh,TMesh * vmap, TMesh * liqmesh,unsigned int mapid ,
     landmesh->removeDoubles();
     landmesh->generateNormals();
     landmesh->generateTrisTexCoords();
+    printf("\033[1m\033[3mTerreno , vertici finali: %u\033[0m\n",landmesh->verts.size());
     printf("\033[1m\033[3mLiquido , vertici finali: %u\033[0m\n",liqmesh->verts.size());
     liqmesh->generateNormals();
 	//liqmesh->launchdecimate(0.2);
@@ -1233,6 +1237,7 @@ int main(int argc,char** argv)
     UpdateClientStatus();
     if ( pid != -1 )
     {
+        printf("Client\n");
         double x_offset = (double(client_x) - 533.33333f/2.0)/533.333333f;
         double y_offset = (double(client_y) - 533.33333f/2.0)/533.333333f;
 

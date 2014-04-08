@@ -14,7 +14,7 @@ using namespace MaNGOS;
 // see following files:
 // contrib/extractor/system.cpp
 // src/game/GridMap.cpp
-char const* MAP_VERSION_MAGIC = "v1.2";
+char const* MAP_VERSION_MAGIC = "v1.3";
 namespace MMAP
 {
 TileBuilder::TileBuilder(bool hiRes) :
@@ -121,7 +121,7 @@ bool TileBuilder::loadMap(uint32 mapID, uint32 tileX, uint32 tileY, MeshData &me
     uint16 holes[16][16];
     sprintf(mapFileName, "maps/%03u%02u%02u.map", mapID, tileY, tileX);
     sprintf(holeFileName, "maps/%03u%02u%02u.hole", mapID, tileY, tileX);
-    printf("\033[1m\033[37mLoading map %s...\033[0m\n",mapFileName);
+    fprintf(stderr,"\033[1m\033[37mLoading map %s...\033[0m\n",mapFileName);
     FILE* mapFile = fopen(mapFileName, "rb");
     if(!mapFile)
         return true;
@@ -140,7 +140,6 @@ bool TileBuilder::loadMap(uint32 mapID, uint32 tileX, uint32 tileY, MeshData &me
     {
         fclose(mapFile);
         printf("%s is the wrong version, it may cause problems\n", mapFileName);
-        abort();
         return false;
     }
 
