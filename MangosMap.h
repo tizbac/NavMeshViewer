@@ -17,6 +17,8 @@ namespace MaNGOS
         uint32 heightMapSize;
         uint32 liquidMapOffset;
         uint32 liquidMapSize;
+        uint32 holesOffset;
+        uint32 holesSize;
     };
     
     // ==============mmaps don't use area==============
